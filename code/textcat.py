@@ -27,7 +27,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "prior",
-        type=int,
+        type=float,
         help="prior probability for the language model",
     )
     parser.add_argument(
@@ -56,12 +56,25 @@ def parse_args() -> argparse.Namespace:
 
     return parser.parse_args()
 
-def catagorize(lm1: LanguageModel, lm2: LanguageModel, prior: float, file: Path):
+def catagorize(lm1: LanguageModel, lm2: LanguageModel, prior: float, file: Path) -> int:
     """ The function takes in 2 language models, one for each catagory, 
         and prior for the first language model, and a file. Using the log probability of 
         the file given, classify the catagory of the file using log probability of
         the file.
     """
+    log_prob1 = file_log_prob(file, lm1)
+    log_prob2 = file_log_prob(file, lm2)
+
+    log_prior1 = math.log(prior)
+    log_prior2 = math.log(1 - prior)
+
+    log_posterior1 = log_prob1 + log_prior1
+    log_posterior2 = log_prob2 + log_prior2
+
+    if log_posterior1 > log_posterior2:
+        return 1
+    else:
+        return 2
 
 
 def file_log_prob(file: Path, lm: LanguageModel) -> float:
@@ -94,51 +107,76 @@ def file_log_prob(file: Path, lm: LanguageModel) -> float:
     return log_prob
 
 
+
 def main():
     args = parse_args()
     logging.basicConfig(level=args.logging_level)
-    print(f'prior = {args.prior}\nmodel1 = {args.model1}\nmodel1 = {args.model2}')
+    # print(f'prior = {args.prior}\nmodel1 = {args.model1}\nmodel1 = {args.model2}')
 
     # Specify hardware device where all tensors should be computed and
     # stored.  This will give errors unless you have such a device
     # (e.g., 'gpu' will work in a Kaggle Notebook where you have
     # turned on GPU acceleration).
-    # if args.device == 'mps':
-    #     if not torch.backends.mps.is_available():
-    #         if not torch.backends.mps.is_built():
-    #             logging.critical("MPS not available because the current PyTorch install was not "
-    #                 "built with MPS enabled.")
-    #         else:
-    #             logging.critical("MPS not available because the current MacOS version is not 12.3+ "
-    #                 "and/or you do not have an MPS-enabled device on this machine.")
-    #         exit(1)
-    # torch.set_default_device(args.device)
+    if args.device == 'mps':
+        if not torch.backends.mps.is_available():
+            if not torch.backends.mps.is_built():
+                logging.critical("MPS not available because the current PyTorch install was not "
+                    "built with MPS enabled.")
+            else:
+                logging.critical("MPS not available because the current MacOS version is not 12.3+ "
+                    "and/or you do not have an MPS-enabled device on this machine.")
+            exit(1)
+    torch.set_default_device(args.device)
         
-    # log.info("Testing...")
-    # lm = LanguageModel.load(args.model, device=args.device)
+    log.info("Testing...")
+    lm1 = LanguageModel.load(args.model1, device=args.device)
+    lm2 = LanguageModel.load(args.model2, device=args.device)
+    prior = args.prior
     
-    # # We use natural log for our internal computations and that's
-    # # the kind of log-probability that file_log_prob returns.
-    # # We'll print that first.
+    if lm1.vocab != lm2.vocab:
+        raise ValueError("Vocab Files do not match")
+    # We use natural log for our internal computations and that's
+    # the kind of log-probability that file_log_prob returns.
+    # We'll print that first.
 
-    # log.info("Per-file log-probabilities:")
-    # total_log_prob = 0.0
-    # for file in args.test_files:
-    #     log_prob: float = file_log_prob(file, lm)
-    #     print(f"{log_prob:g}\t{file}")
-    #     total_log_prob += log_prob
+    log.info("Per-file Classification:")
+    nMod1 = 0
+    nMod2 = 0
+    correct = 0
+    total = 0
+    total_log_prob1 = 0.0
+    total_log_prob2 = 0.0
+    for file in args.test_files:
+        current_file = Path(file)
+        file_name = current_file.name
+        log_prob1: float = file_log_prob(file, lm1)
+        log_prob2: float = file_log_prob(file, lm2)
+        # print(f"{log_prob:g}\t{file}")
+        total_log_prob1 += log_prob1
+        total_log_prob2 += log_prob2
+        classify: int = catagorize(lm1, lm2, prior, file)
+        actual: int = 1 if args.model1.stem in file_name else 2
+        correct += 1 if classify == actual else 0
+        total += 1
+        nMod1, nMod2 = (nMod1 + 1, nMod2) if classify == 1 else (nMod1, nMod2 + 1)
+        print(f'{args.model1}\t{file}') if classify == 1 else print(f'{args.model2}\t{file}')
+    print(f'{nMod1} files were more probably from {args.model1} ({nMod1/(nMod1+nMod2)})')
+    print(f'{nMod2} files were more probably from {args.model2} ({nMod2/(nMod1+nMod2)})')
+    print(f'total error rate = {(total - correct)/total}')
 
-    # # But cross-entropy is conventionally measured in bits: so when it's
-    # # time to print cross-entropy, we convert log base e to log base 2, 
-    # # by dividing by log(2).
+    # But cross-entropy is conventionally measured in bits: so when it's
+    # time to print cross-entropy, we convert log base e to log base 2, 
+    # by dividing by log(2).
 
-    # bits = -total_log_prob / math.log(2)   # convert to bits of surprisal
+    bits_mod1 = -total_log_prob1 / math.log(2)   # convert to bits of surprisal
+    bits_mod2 = -total_log_prob2 / math.log(2)   # convert to bits of surprisal
 
-    # # We also divide by the # of tokens (including EOS tokens) to get
-    # # bits per token.  (The division happens within the print statement.)
+    # We also divide by the # of tokens (including EOS tokens) to get
+    # bits per token.  (The division happens within the print statement.)
 
-    # tokens = sum(num_tokens(test_file) for test_file in args.test_files)
-    # print(f"Overall cross-entropy:\t{bits / tokens:.5f} bits per token")
+    tokens = sum(num_tokens(test_file) for test_file in args.test_files)
+    print(f"Overall cross-entropy for {args.model1}:\t{bits_mod1 / tokens:.5f} bits per token")
+    print(f"Overall cross-entropy for {args.model2}:\t{bits_mod2 / tokens:.5f} bits per token")
 
 
 if __name__ == "__main__":
