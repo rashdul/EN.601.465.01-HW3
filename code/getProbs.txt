@@ -1,0 +1,19 @@
+#!/bin/bash
+
+
+
+
+for gen_model in models/gen*.model; do
+    # extract the numeric part after "gen"
+    num=$(echo "$gen_model" | sed -E 's#.*/gen([0-9]+)\.model#\1#')
+    spam_model="models/spam${num}.model"
+
+    if [[ -f "$spam_model" ]]; then
+        out="trainedModelOutputprobs/gen${num}_spam${num}_output.txt"
+        echo "Running $gen_model and $spam_model -> $out"
+        python3 ./textcat.py "$gen_model" "$spam_model" 0.7 ../data/gen_spam/dev/{gen,spam}/* \
+            > "$out"
+    else
+        echo "⚠️ No spam model found for $gen_model"
+    fi
+done

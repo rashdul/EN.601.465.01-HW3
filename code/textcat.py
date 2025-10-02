@@ -78,7 +78,8 @@ def catagorize(lm1: LanguageModel, lm2: LanguageModel, prior: float, file: Path)
 
 
 def file_log_prob(file: Path, lm: LanguageModel) -> float:
-    """The file contains one sentence per line. Return the total
+    """
+    The file contains one sentence per line. Return the total
     log-probability of all these sentences, under the given language model.
     (This is a natural log, as for all our internal computations.)
     """
@@ -148,9 +149,12 @@ def main():
     total_log_prob2 = 0.0
     for file in args.test_files:
         current_file = Path(file)
-        file_name = current_file.name
+        file_name = current_file.stem
+        length = int(file_name.split('.')[1])  
         log_prob1: float = file_log_prob(file, lm1)
         log_prob2: float = file_log_prob(file, lm2)
+        with open('results.txt', 'a') as f:
+            f.write(f'{length}\t{((-log_prob1/math.log(2)) + (-log_prob2/math.log(2)))/length}\n')
         # print(f"{log_prob:g}\t{file}")
         total_log_prob1 += log_prob1
         total_log_prob2 += log_prob2
@@ -175,8 +179,7 @@ def main():
     # bits per token.  (The division happens within the print statement.)
 
     tokens = sum(num_tokens(test_file) for test_file in args.test_files)
-    print(f"Overall cross-entropy for {args.model1}:\t{bits_mod1 / tokens:.5f} bits per token")
-    print(f"Overall cross-entropy for {args.model2}:\t{bits_mod2 / tokens:.5f} bits per token")
+    print(f"Overall cross-entropy for {args.model1} and {args.model2}:\t{(bits_mod1 + bits_mod2) / tokens:.5f} bits per token")
 
 
 if __name__ == "__main__":

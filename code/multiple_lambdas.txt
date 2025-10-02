@@ -1,0 +1,24 @@
+#!/bin/bash
+
+
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.5 ../data/gen_spam/train/gen --output models/gen05.model
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.5 ../data/gen_spam/train/spam --output models/spam05.model
+
+
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.05 ../data/gen_spam/train/gen --output models/gen005.model
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.05 ../data/gen_spam/train/spam --output models/spam005.model
+
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.005 ../data/gen_spam/train/gen --output models/gen0005.model
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.005 ../data/gen_spam/train/spam --output models/spam0005.model
+
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.0005 ../data/gen_spam/train/gen --output models/gen00005.model
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.0005 ../data/gen_spam/train/spam --output models/spam00005.model
+
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.00005 ../data/gen_spam/train/gen --output models/gen000005.model
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.00005 ../data/gen_spam/train/spam --output models/spam000005.model
+
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.000005 ../data/gen_spam/train/gen --output models/gen0000005.model
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.000005 ../data/gen_spam/train/spam --output models/spam0000005.model
+
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.0000005 ../data/gen_spam/train/gen --output models/gen0000005.model
+python3 ./train_lm.py vocab-genspam.txt add_lambda --lambda 0.0000005 ../data/gen_spam/train/spam --output models/spam0000005.model
